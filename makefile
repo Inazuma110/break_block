@@ -1,3 +1,3 @@
 run:
-	g++  test.cpp -lncurses
+	g++  test.cpp -lncurses -pthread
 	./a.out

@@ -8,19 +8,31 @@ bool now_playing = true;
 bool has_ball = true;
 double bx = 0.0, by = 0.0;
 double vx = 0.0, vy = 0.0;
+const int SX = 10, SY = 2;
+const int WX = 60, WY = 5;
+bool blocks[WX][WY];
 
 void
 draw_all(void) {
   clear();
-
+  //パドルの描画
   if (has_ball) {
     mvprintw(py - 1, px, "*");
   }
   mvprintw(py, px - 2, "-----");
+  //ボールの描画
   int x = static_cast<int>(bx);
   int y = static_cast<int>(by);
   if (!has_ball) {
     mvprintw(y, x, "*");
+  }
+  //ブロックの描画
+  for (int i = 0; i < WX; i++) {
+    for (int j = 0; j < WY; j++) {
+      if (blocks[i][j]) {
+        mvprintw(j + SY, i + SX, "+");
+      }
+    }
   }
   refresh();
 }
@@ -37,9 +49,29 @@ paddle_collision_check(void) {
 }
 
 void
-move_ball(void){
-  if(has_ball)return;
+block_collision_check(void) {
+  if (bx < SX)return;
+  if (bx > SX + WX)return;
+  if (by < SY)return;
+  if (by > SY + WY)return;
+  int x = static_cast<int>(bx) - SX;
+  int y = static_cast<int>(by) - SY;
+  if (!blocks[x][y])return;
+  blocks[x][y] = false;
+  double dx = bx - x + 0.5;
+  double dy = by - y + 0.5;
+  if (abs(dx) < abs(dy)) {
+    vx = -vx;
+  } else {
+    vy = -vy;
+  }
+}
+
+void
+move_ball(void) {
+  if (has_ball)return;
   paddle_collision_check();
+  block_collision_check();
   bx += vx;
   by += vy;
   if (bx < 0) {
@@ -56,7 +88,6 @@ move_ball(void){
   }
   if (by > 24) {
     by = 24;
-    // vy = abs(vy);
     has_ball = true;
   }
 }
@@ -73,14 +104,21 @@ game_loop(void) {
 int
 main(void) {
   initscr();
-  noecho();
-  curs_set(0);
-
+  noecho(); //キーが入力されても表示しない
+  curs_set(0);//カーソルを非表示
+  keypad(stdscr, TRUE); // xtermでマウスイベントの取得に必要
+  mousemask(ALL_MOUSE_EVENTS, NULL);//マウスイベントを取得
+  // ブロック初期化
+  for (int i = 0; i < WX; i++) {
+    for (int j = 0; j < WY; j++) {
+      blocks[i][j] = true;
+    }
+  }
+  MEVENT e;
   draw_all();
   auto th_game = std::thread([] {game_loop();});
   std::mt19937 mt;
   std::uniform_real_distribution<double> ud(0.0, 1.0);
-
   while (true) {
     int ch = getch();
     if (ch == 'q') break;
@@ -92,7 +130,6 @@ main(void) {
       vx = cos(theta) * 0.5;
       vy = -sin(theta) * 0.5;
     }
-
     if(ch == 'l'){
       px++;
       if (px < 2)px = 2;
@@ -103,8 +140,14 @@ main(void) {
       if (px < 2)px = 2;
       if (px > 77)px = 77;
     }
+    // if (ch == KEY_MOUSE) {
+    //   if (getmouse(&e) == OK) {
+    //     px = e.x;
+    //     if (px < 2)px = 2;
+    //     if (px > 77)px = 77;
+    //   }
+    // }
   }
-
   now_playing = false;
   th_game.join();
   endwin();
