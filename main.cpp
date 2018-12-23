@@ -9,6 +9,10 @@ bool has_ball = true;
 double bx = 0.0, by = 0.0;
 double vx = 0.0, vy = 0.0;
 
+const int sx = 10, sy = 2;
+const int wx = 60, wy = 5;
+bool blocks[wx][wy];
+
 void
 draw_all(void) {
   clear();
@@ -21,6 +25,14 @@ draw_all(void) {
   int y = static_cast<int>(by);
   if (!has_ball) {
     mvprintw(y, x, "*");
+  }
+
+  for (int i = 0; i < wx; i++)
+  {
+    for (int j = 0; j < wy; j++)
+    {
+      if(blocks[i][j]) mvprintw(j + sy, i + sx, "+");
+    }
   }
   refresh();
 }
@@ -36,27 +48,46 @@ paddle_collision_check(void) {
   vy = -sin(theta) * 0.5;
 }
 
+void block_collision_check(void) {
+  if (bx < sx)return;
+  if (bx > sx + wx)return;
+  if (by < sy)return;
+  if (by > sy + wy)return;
+  int x = static_cast<int>(bx) - sx;
+  int y = static_cast<int>(by) - sy;
+  if (!blocks[x][y])return;
+  blocks[x][y] = false;
+  double dx = bx - x + 0.5;
+  double dy = by - y + 0.5;
+  if (abs(dx) < abs(dy)) {
+    vx = -vx;
+  } else {
+    vy = -vy;
+  }
+}
+
 void
 move_ball(void){
   if(has_ball)return;
   paddle_collision_check();
+  block_collision_check();
   bx += vx;
   by += vy;
   if (bx < 0) {
     bx = 0;
-    vx = abs(vx);
+    vx = -vx;
   }
   if (by < 0) {
     by = 0;
-    vy = abs(vy);
+    vy = -vy;
   }
   if (bx > 80) {
     bx = 80;
-    vx = -abs(vx);
+    vx = -vx;
   }
   if (by > 24) {
     by = 24;
-    // vy = abs(vy);
+    vy = -vy;
     has_ball = true;
   }
 }
@@ -75,6 +106,11 @@ main(void) {
   initscr();
   noecho();
   curs_set(0);
+  for (int i = 0; i < wx; i++) {
+    for (int j = 0; j < wy; j++) {
+      blocks[i][j] = true;
+    }
+  }
 
   draw_all();
   auto th_game = std::thread([] {game_loop();});
@@ -94,12 +130,12 @@ main(void) {
     }
 
     if(ch == 'l'){
-      px++;
+      px += 3;
       if (px < 2)px = 2;
       if (px > 77)px = 77;
     }
     if(ch == 'h'){
-      px--;
+      px -= 3;
       if (px < 2)px = 2;
       if (px > 77)px = 77;
     }
